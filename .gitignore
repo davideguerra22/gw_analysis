@@ -1,0 +1,27 @@
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# editors and OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# files written by gw_analysis.py and gw_plot.py (only the example is kept)
+*.h5
+*.hdf5
+*.html
+*_info.json
+*.tmp
+!example/*

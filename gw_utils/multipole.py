@@ -3,8 +3,8 @@
 # Reading of the Multipole ASCII files mp_psi4_l*_m*_r*.asc.
 # The files are looked for in every output-NNNN folder of the simulation (at any
 # depth), or in the folder itself if there are no output-NNNN folders.
-# The outputs are merged as in the old h22.py: concatenated in order and the
-# repeated times (restarts) removed with np.unique.
+# The outputs are concatenated in order and the repeated times (restarts)
+# removed with np.unique.
 
 import os
 import re
@@ -52,7 +52,7 @@ def ListPsi4(simdir):
 
 
 def dataimport(files):
-    """concatenates the files and removes the repeated times (as in h22.py)"""
+    """concatenates the files and removes the repeated times"""
     data_list = []
     for f in files:
         try:

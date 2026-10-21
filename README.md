@@ -66,7 +66,7 @@ The answers are saved in `<output>_info.json`. When the script is run again on t
 python3 gw_analysis.py SIM_DIR --info SIM_DIR/H5/gw_analysis_info.json
 ```
 
-To add or change the system information later (also in `/gw_info`), without recomputing anything:
+To add or change the system information later, without recomputing anything:
 
 ```bash
 python3 gw_analysis.py --edit-info SIM_DIR/H5/gw_analysis.h5
@@ -81,27 +81,10 @@ Other options:
 | `--lmax L` | use only modes with l ≤ L |
 | `--fcut F` | cut-off frequency of the integration, in Hz |
 
-## Interactive plot (optional)
-
-```bash
-python3 gw_plot.py SIM_DIR/H5/gw_analysis.h5
-```
-
-It writes `SIM_DIR/H5/gw_analysis.html`, a single page that can be opened in any browser (internet is needed to load Plotly). In the page you can choose:
-
-- the extraction radii (more than one, to compare them);
-- the mode;
-- ψ₄ or h;
-- real part (h₊), imaginary part (h×) or amplitude;
-- time as retarded time or from the merger (only if the file has a merger, `has_merger = 1`; for a single NS this option is not shown).
-
-ψ₄ is plotted multiplied by the radius, r·ψ₄, so that different radii can be compared. Each radius has its colour, from deep blue (largest radius) to orange (smallest); the page opens on l2m2 at the largest radius. With all the radii and modes the page is large (about 33 MB for 9 radii, 25 modes and 6768 times). `--radii`, `--lmax` and `--step N` (one point every N) make it smaller. See `python3 gw_plot.py --help`.
-
 ## Output file
 
 ```
 gw_analysis.h5
-├── gw_info              summary of the run (text)
 ├── simulation/          system information (attributes)
 ├── sampling/            time sampling (attributes), time, time_ms
 ├── processing/          how h was computed (attributes)
@@ -115,11 +98,11 @@ gw_analysis.h5
     └── ...
 ```
 
-All datasets are 1D float arrays. Without suffix the units are code units (G = c = M☉ = 1); `_ms`, `_s`, `_Hz` and `_km` are physical units. `tret` is the retarded time. `rh_plus + 1j*rh_cross` is r·(h₊ + i h×), the same as `rh` in the old `h22.h5` files of pycactus3.
+All datasets are 1D float arrays. Without suffix the units are code units (G = c = M☉ = 1); `_ms`, `_s`, `_Hz` and `_km` are physical units. The file attributes give the date, the code version, the user and the simulation folder.
 
-`gw_info` is the summary printed in the terminal at the end of the run: system, ADM mass and angular momentum, Ω₀, output folders, radii, modes, time sampling, frequencies, cut-off frequency and, for binaries, the merger time at every radius. It is updated by `--edit-info`. To read it: `print(f['gw_info'].asstr()[()])`.
+### `/simulation`
 
-**`/simulation`**
+Information on the simulated system, as given by the user. Blank entries are NaN (numbers) or empty strings (text).
 
 | attribute | |
 |---|---|
@@ -136,7 +119,9 @@ All datasets are 1D float arrays. Without suffix the units are code units (G = c
 | `eos`, `eos_type`, `eos_id`, `eos_evol`, `eos_table`, `gamma_th` | EOS, optional |
 | `Mtot`, `q`, `Mchirp`, `C1`, `C2`, `C_ns` | computed from the masses and radii |
 
-**`/sampling`**
+### `/sampling`
+
+Time sampling, the same for all the time series of the file. Datasets: `time` and `time_ms`, the coordinate time.
 
 | attribute | |
 |---|---|
@@ -147,19 +132,42 @@ All datasets are 1D float arrays. Without suffix the units are code units (G = c
 | `outputs`, `outputs_t0`, `outputs_tf`, `ndup` | output folders used, their time range, repeated times removed |
 | `uniform`, `dt_min`, `dt_max` | check of the time step |
 
-**`/radii/R*`**
+### `/processing`
+
+| attribute | |
+|---|---|
+| `f0`, `f0_Hz` | cut-off frequency of the integration |
+| `f0_from` | `omega0/pi` or `user` |
+| `integration` | routine used for psi4 → h |
+| `radii`, `modes` | extraction radii and modes in the file |
+
+### `/units`
+
+| attribute | |
+|---|---|
+| `CU_to_s`, `CU_to_ms` | code unit of time in s, ms |
+| `CU_to_m`, `CU_to_km` | code unit of length in m, km |
+| `G`, `c`, `M_sun`, `Mparsec` | constants used (SI, Mparsec in km) |
+
+### `/radii/R*`
+
+One group per extraction radius, with one sub-group per mode (`l2m2`, `l2m-2`, ...).
+
+| dataset | |
+|---|---|
+| `tret`, `tret_ms` | retarded time |
+| `<mode>/psi4_re`, `<mode>/psi4_im` | psi4 |
+| `<mode>/rh_plus`, `<mode>/rh_cross` | r·h₊ and r·h× (r = `Riso`) |
 
 | attribute | |
 |---|---|
 | `R`, `Riso`, `Riso_km` | coordinate radius, areal radius |
 | `rstar` | t − tret |
 | `t_merg`, `t_merg_ms` | merger time (binaries) |
-| `f_merg_Hz`, `A_merg` | GW frequency and \|r·h₂₂\| at the merger |
+| `f_merg_Hz`, `A_merg` | GW frequency and \|r·h₂₂\| at the merger (binaries) |
 | `N_post`, `T_post_ms`, `df_post_Hz` | samples, duration and frequency resolution after the merger (binaries) |
 
-**`/processing`**: cut-off frequency `f0` (`f0_Hz`), radii, modes and the routines used.
-
-Example:
+### Example
 
 ```python
 import h5py, numpy as np
@@ -172,12 +180,28 @@ freq = np.fft.rfftfreq(len(hp), f['sampling'].attrs['dt_s'])        # [Hz]
 
 ## How it is computed
 
-The steps are the same as in the old `h22.py` script with pycactus3, at every extraction radius (no extrapolation to infinite radius):
+At every extraction radius, with the pycactus3 routines (no extrapolation to infinite radius):
 
 1. the cut-off frequency is f0 = Ω₀/π;
 2. psi4 is integrated twice in time, with the integration constants removed by a linear fit and a Butterworth high-pass filter at f0 (`NIntegratePsi4_filter`); then h is multiplied by the areal radius `Riso`;
-3. the retarded time is `RetardedTime(t, Riso(R), Madm)`, as in `h22.py`;
+3. the retarded time `tret` is computed with `RetardedTime`;
 4. for binaries, the merger time is the maximum of |r·h₂₂| at that radius (`FindMaximumTimeSeries`). For a single NS there is no merger time.
+
+## Interactive plot (optional)
+
+```bash
+python3 gw_plot.py SIM_DIR/H5/gw_analysis.h5
+```
+
+It writes `SIM_DIR/H5/gw_analysis.html`, a single page that can be opened in any browser (internet is needed to load Plotly). In the page you can choose:
+
+- the extraction radii (more than one, to compare them);
+- the mode;
+- ψ₄ or h;
+- real part (h₊), imaginary part (h×) or amplitude;
+- time as retarded time or from the merger (only if the file has a merger, `has_merger = 1`; for a single NS this option is not shown).
+
+ψ₄ is plotted multiplied by the radius, r·ψ₄, so that different radii can be compared. Each radius has its colour, from deep blue (largest radius) to orange (smallest); the page opens on l2m2 at the largest radius. With all the radii and modes the page is large (about 33 MB for 9 radii, 25 modes and 6768 times). `--radii`, `--lmax` and `--step N` (one point every N) make it smaller. See `python3 gw_plot.py --help`.
 
 ## Acknowledgments
 

@@ -37,7 +37,7 @@ def write_radius(g, wave):
             write_dset(gm, name, data)
 
 
-def WriteGW(fname, root, sim, sampling, time, processing, units, radii, gwinfo=''):
+def WriteGW(fname, root, sim, sampling, time, processing, units, radii):
     """writes everything in fname (first in fname.tmp, renamed at the end)"""
     tmp = fname + '.tmp'
     cfg = h5py.get_config()
@@ -45,7 +45,6 @@ def WriteGW(fname, root, sim, sampling, time, processing, units, radii, gwinfo='
     try:
         with h5py.File(tmp, 'w') as f:
             set_attrs(f, root)
-            f.create_dataset('gw_info', data=gwinfo, dtype=h5py.string_dtype())
             set_attrs(f.create_group('simulation'), sim)
             g = f.create_group('sampling')
             set_attrs(g, sampling)
@@ -59,20 +58,6 @@ def WriteGW(fname, root, sim, sampling, time, processing, units, radii, gwinfo='
     finally:
         cfg.track_order = old
     os.replace(tmp, fname)
-
-
-def read_attrs(fname):
-    """root, simulation, sampling, processing and radii attributes"""
-    with h5py.File(fname, 'r') as f:
-        return (dict(f.attrs), dict(f['simulation'].attrs), dict(f['sampling'].attrs),
-                dict(f['processing'].attrs), {g: dict(f['radii'][g].attrs) for g in f['radii']})
-
-
-def write_info(fname, text):
-    with h5py.File(fname, 'r+') as f:
-        if 'gw_info' in f:
-            del f['gw_info']
-        f.create_dataset('gw_info', data=text, dtype=h5py.string_dtype())
 
 
 def read_sim(fname):

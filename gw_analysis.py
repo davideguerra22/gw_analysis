@@ -5,8 +5,8 @@
 Reads the psi4 multipoles of an Einstein Toolkit simulation (Multipole ASCII
 files mp_psi4_l*_m*_r*.asc) and writes one HDF5 file with psi4 and the strain
 at every extraction radius, the time sampling and the information on the
-simulated system. h is computed as in the old h22.py with
-the pycactus3 routines (rewritten in gw_utils/analysis.py).
+simulated system. h is computed with the pycactus3 routines (rewritten in
+gw_utils/analysis.py).
 
 SIM_DIR is the folder with the output-NNNN folders, one for every restart of
 the simulation from checkpoint. The script asks in the terminal: system type,
@@ -121,7 +121,7 @@ def previous_answers(simdir, interactive):
 
 
 def summary(sim, samp, proc, rattrs):
-    """what is printed at the end of the run, saved also in /gw_info"""
+    """summary printed at the end of the run"""
     L = []
     name = '' if SI.isblank(sim.get('name', '')) else ', ' + txt(sim['name'])
     L.append('System      : %s - %s%s' % (txt(sim['system']), txt(sim['system_long']), name))
@@ -155,14 +155,10 @@ def summary(sim, samp, proc, rattrs):
     return L
 
 
-def header(root):
-    return ['%s, %s' % (txt(root['code']), txt(root['date'])), 'Simulation  : %s' % txt(root['simdir'])]
-
-
 def extract(time, psi4, r, madmi, f00):
-    """same steps as h22.py for one radius (no extrapolation)"""
+    """psi4 -> r*h for one radius"""
     r_iso = AA.Riso(r=r, M=madmi)
-    tret = AA.RetardedTime(time, r=r_iso, M=madmi)       # r_iso here, as in h22.py
+    tret = AA.RetardedTime(time, r=r_iso, M=madmi)
     out = {}
     for lm, p in psi4.items():
         out[lm] = {'psi4': p, 'rh': r_iso*AA.NIntegratePsi4_filter(time, p, f00, 2, r_iso, madmi)}
@@ -195,8 +191,6 @@ def edit_info(fname):
     print('\n%s: %s, Madm = %.15g' % (os.path.basename(fname), info['system'], info['Madm']))
     SI.ask_optional(info, edit=True)
     OUT.update_sim(fname, SI.sim_attrs(info))
-    root, sim, samp, proc, rattrs = OUT.read_attrs(fname)
-    OUT.write_info(fname, '\n'.join(header(root) + summary(sim, samp, proc, rattrs)))
     jfile = os.path.splitext(fname)[0] + '_info.json'
     saved = SI.load_json(jfile) if os.path.isfile(jfile) else {}
     saved.update({k: info[k] for k in ('system', 'Madm', 'Jadm', 'omega0')})
@@ -239,7 +233,7 @@ def main():
             info['fcut'] = FCUT_NS
             warnings.warn('cut-off frequency set to %g Hz (use --fcut)' % FCUT_NS)
     if SI.isblank(info.get('fcut')):
-        f00 = float(info['omega0'])/np.pi * U.CU_to_s      # as in h22.py
+        f00 = float(info['omega0'])/np.pi * U.CU_to_s
         f0_from = 'omega0/pi'
     else:
         f00 = float(info['fcut']) * U.CU_to_s
@@ -294,8 +288,6 @@ def main():
     samp = sampling(time, tinfo)
     proc = {'f0': f00, 'f0_Hz': f00/U.CU_to_s, 'f0_from': f0_from,
             'integration': 'NIntegratePsi4_filter (pycactus3)',
-            'tret': 'RetardedTime(t, Riso(R), Madm) as in h22.py: R is converted twice, '
-                    'so tret is about Madm earlier than t - r*(Riso)',
             'radii': np.array([float(r) for r in rext]), 'modes': list(h)}
     title = 'GW data, %s' % SI.SYSTEMS[info['system']]
     if not SI.isblank(info.get('name')):
@@ -303,7 +295,7 @@ def main():
     root = {'title': title, 'date': datetime.now().strftime('%Y-%m-%d %H:%M'),
             'code': 'gw_analysis.py %s' % __version__, 'user': getpass.getuser(), 'simdir': simdir}
     lines = summary(sim, samp, proc, {k: v['attrs'] for k, v in radii.items()})
-    OUT.WriteGW(fname, root, sim, samp, time, proc, U.as_dict(), radii, '\n'.join(header(root) + lines))
+    OUT.WriteGW(fname, root, sim, samp, time, proc, U.as_dict(), radii)
 
     # ---- summary
     print('\n' + '-'*72)
