@@ -3,9 +3,7 @@
 # Information on the simulated system, asked to the user in the terminal.
 # Entries left blank are stored as NaN (numbers) or '' (text).
 
-import json
-import math
-
+import json, math
 from . import units as U
 
 SYSTEMS = {
@@ -19,7 +17,7 @@ BINARIES = ('BNS', 'BBH', 'BHNS')
 WITH_NS = ('BNS', 'BHNS', 'NS')
 ALL = tuple(SYSTEMS)
 
-# optional entries: (key, question, type, systems)
+# Optional entries: (key, question, type, systems)
 OPTIONAL = [
     ('name',        'Simulation name', str, ALL),
     ('description', 'Short description', str, ALL),
@@ -68,7 +66,7 @@ def blank(typ):
 def isblank(x):
     return x is None or x == '' or (isinstance(x, float) and math.isnan(x))
 
-
+# Gets the system name from a string
 def get_system(s):
     s = str(s).strip().upper()
     names = list(SYSTEMS)
@@ -99,9 +97,9 @@ def _input(prompt):
     except EOFError:
         raise SystemExit('\nAborted.')
 
-
+# Asks the user a question and returns the answer
+# Enter -> default (or blank). With clear=True '-' empties the entry
 def ask(question, typ=str, default=None, required=False, clear=False):
-    """Enter -> default (or blank). With clear=True '-' empties the entry."""
     hint = '' if isblank(default) else ' [%s]' % default
     while True:
         s = _input('  %s%s: ' % (question, hint))
@@ -166,9 +164,8 @@ def ask_optional(info, edit=False):
     for key, q, typ, _ in optional(info['system']):
         info[key] = ask(q, typ, info.get(key) if edit else None, clear=edit)
 
-
+# Asks what is missing. jsonfile = answers of a previous run
 def collect(interactive, jsonfile=None):
-    """Asks what is missing. jsonfile = answers of a previous run."""
     info = load_json(jsonfile) if jsonfile else {}
     if not isblank(info.get('system')):
         info['system'] = get_system(info['system'])
@@ -221,9 +218,8 @@ def sim_attrs(info):
     a.update(derived(info))
     return a
 
-
+# Total mass, mass ratio, chirp mass and compactness, when the masses are given
 def derived(info):
-    """total mass, mass ratio, chirp mass and compactness, when the masses are given"""
     g = lambda k: math.nan if isblank(info.get(k)) else float(info[k])
     C = lambda m, R: m*U.CU_to_km/R
     system = info['system']
@@ -246,13 +242,13 @@ def derived(info):
     return out
 
 
-## answers saved in a json file
+# Answers saved in a json file
 def save_json(fname, info):
     with open(fname, 'w') as f:
         json.dump({k: None if isblank(v) else v for k, v in info.items()}, f, indent=2)
         f.write('\n')
 
-
+# Loads the answers from a json file
 def load_json(fname):
     with open(fname) as f:
         raw = json.load(f)

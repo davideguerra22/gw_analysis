@@ -6,10 +6,7 @@
 # The outputs are concatenated in order and the repeated times (restarts)
 # removed with np.unique.
 
-import os
-import re
-import warnings
-
+import os, re, warnings
 import numpy as np
 
 RE_FILE = re.compile(r'^mp_psi4_l(\d+)_m(-?\d+)_r(\d+(?:\.\d+)?)\.asc$', re.IGNORECASE)
@@ -19,9 +16,8 @@ RE_OUTPUT = re.compile(r'^output-(\d+)$')
 def ModeName(l, m):
     return 'l%dm%d' % (l, m)
 
-
+# Returns the outputs [(name, {(r, l, m): file})], the radii and the modes found
 def ListPsi4(simdir):
-    """Returns the outputs [(name, {(r, l, m): file})], the radii and the modes found."""
     simdir = os.path.abspath(simdir)
     if not os.path.isdir(simdir):
         raise FileNotFoundError('directory not found: %s' % simdir)
@@ -50,9 +46,8 @@ def ListPsi4(simdir):
     modes = sorted({(k[1], k[2]) for k in keys})
     return outs, radii, modes
 
-
+# Concatenates the files and removes the repeated times
 def dataimport(files):
-    """concatenates the files and removes the repeated times"""
     data_list = []
     for f in files:
         try:
@@ -69,13 +64,10 @@ def dataimport(files):
     _, idx = np.unique(data_all[:, 0], return_index=True)
     return data_all[idx], len(data_all) - len(idx)
 
-
+# Returns time, psi4[r][lm] (complex) and some info on the time sampling
+# All the modes must have the same times: the ones that don't (missing files)
+# are skipped with a warning
 def ReadPsi4(outs, radii, modes, verbose=True):
-    """Returns time, psi4[r][lm] (complex) and some info on the time sampling.
-
-    All the modes must have the same times: the ones that don't (missing files)
-    are skipped with a warning.
-    """
     t = None
     psi4 = {r: {} for r in radii}
     ndup = 0

@@ -1,25 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Davide Guerra
-"""
-Makes one interactive HTML page from a file written by gw_analysis.py.
-In the page you can choose the extraction radii, the mode, psi4 or h and the
-part (real, imaginary, amplitude), plotted vs the retarded time.
+##############################################################################
+# Makes one interactive HTML page from a file written by gw_analysis.py.
+# In the page you can choose the extraction radii, the mode, psi4 or h and the
+# part (real, imaginary, amplitude), plotted vs the retarded time.
+#
+# The page needs no python: open it in a browser (Plotly is loaded from the web).
+# The arrays are stored in single precision to keep the file small.
+##############################################################################
 
-The page needs no python: open it in a browser (Plotly is loaded from the web).
-The arrays are stored in single precision to keep the file small.
-"""
 
-import argparse
-import base64
-import json
-import math
-import os
-
-import h5py
+import argparse, base64, json
+import math, os, h5py
 import numpy as np
-
-
 
 # colours of the radii: 'plasma' colormap (cut before the yellow end),
 # deep blue for the largest radius and orange for the smallest one
@@ -27,8 +21,12 @@ PALETTE = ['#0d0887', '#41049d', '#6a00a8', '#8f0da4', '#b12a90',
            '#cc4778', '#e16462', '#f2844b', '#fca636']
 
 
+##############################################################################
+############################ FUNCTIONS #######################################
+##############################################################################
+
+# return n colours along PALETTE, the first one for the largest radius
 def colors(n):
-    """n colours along PALETTE, the first one for the largest radius"""
     rgb = np.array([[int(c[i:i+2], 16) for i in (1, 3, 5)] for c in PALETTE], dtype=float)
     x = np.linspace(0, len(PALETTE) - 1, len(PALETTE))
     out = []
@@ -36,12 +34,11 @@ def colors(n):
         out.append('#%02x%02x%02x' % tuple(int(round(np.interp(v, x, rgb[:, k]))) for k in range(3)))
     return out
 
-
+# convert a float32 array to a base64 string, decoded in the browser
 def b64(x):
-    """float32 array -> base64 string (decoded in the browser)"""
     return base64.b64encode(np.ascontiguousarray(x, dtype='<f4').tobytes()).decode()
 
-
+# return a string with the main info of the simulation and sampling
 def info_line(f):
     a = f['simulation'].attrs
     s = f['sampling'].attrs
@@ -55,7 +52,7 @@ def info_line(f):
     out.append('N = %d, dt = %.4g ms' % (s['N'], s['dt_ms']))
     return ' &middot; '.join(out)
 
-
+# build the data dictionary to be converted to JSON and embedded in the HTML page
 def build_data(fname, radii=None, lmax=None, step=1):
     f = h5py.File(fname, 'r')
     groups = list(f['radii'])
@@ -91,7 +88,7 @@ def build_data(fname, radii=None, lmax=None, step=1):
 SHIFT_HTML = """<div class="grp"><span class="lab"></span>
   <label><input type="checkbox" id="shift"> time from the merger</label></div>
 """
-
+# HTML template for the interactive page, with placeholders for the title, info, shift checkbox and data
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -216,6 +213,10 @@ draw();
 </html>
 """
 
+
+##############################################################################
+############################## MAIN PROGRAM ##################################
+##############################################################################
 
 def main():
     ap = argparse.ArgumentParser(

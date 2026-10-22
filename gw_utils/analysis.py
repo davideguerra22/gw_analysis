@@ -12,16 +12,15 @@ import numpy as np
 import scipy.integrate
 import scipy.signal
 
-
+# areal radius of the coordinate radius r
 def Riso(r=0, M=0):
-    """areal radius of the coordinate radius r"""
     if r == 0:
         return r
     if M > 1e-8:
         return r*(1+M/(2*r))**2
     return r
 
-
+# retarded time at radius r, for a Schwarzschild spacetime of mass M
 def RetardedTime(t, r=0, M=0):
     if r == 0:
         return t
@@ -32,9 +31,8 @@ def RetardedTime(t, r=0, M=0):
         rstar = r
     return t - rstar
 
-
+# integrate psi4 Nint times, subtracting a polynomial fit of order "order"
 def NIntegratePsi4(t, psi4, Nint=2, r=0, M=0, order=2):
-    """Nint time integrals of psi4 (zero before t_ret = 0), minus a polynomial fit"""
     t_ret = RetardedTime(t, r, M)
     idx_t0 = np.searchsorted(t_ret, 0)
     integrand = np.array(psi4, dtype=complex)
@@ -47,23 +45,21 @@ def NIntegratePsi4(t, psi4, Nint=2, r=0, M=0, order=2):
     h[idx_t0:] = h[idx_t0:] - np.polyval(h_int_const, t_ret[idx_t0:])
     return h
 
-
+# integrate psi4 Nint times, subtracting a polynomial fit of order "order", and apply a butterworth high-pass filter at f0
 def NIntegratePsi4_filter(t, psi4, f0, Nint=2, r=0, M=0):
-    """integration + butterworth high-pass filter at f0 (code units)"""
     order = Nint-1
     fnyq = 0.5/(np.diff(t)[0])
     h = np.conj(NIntegratePsi4(t, psi4, Nint, r, M, order))
     b, a = scipy.signal.iirdesign(f0/fnyq, f0/fnyq/10.0, 1e-2, 80, ftype="butter")
     return scipy.signal.filtfilt(b, a, h, padtype='constant')
 
-
+# find the maximum of a time series f(x), return (x_max, f_max, idx_max)
 def FindMaximumTimeSeries(x, f):
     fval = np.abs(f)
     idx = int(np.argmax(fval))
     return (x[idx], fval[idx], idx)
 
-
+# compute the instantaneous frequency of a complex mode, |d phase/dt| / 2pi
 def GWfrequency(t, h):
-    """instantaneous frequency of a complex mode, |d phase/dt| / 2pi"""
     phase = np.unwrap(np.angle(h))
     return np.abs(np.gradient(phase, t))/(2*np.pi)

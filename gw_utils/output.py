@@ -2,9 +2,7 @@
 #
 # Writing of the output HDF5 file (layout in the README).
 
-import os
-
-import h5py
+import os, h5py
 import numpy as np
 
 UNITS = {
@@ -13,20 +11,20 @@ UNITS = {
     'rh_plus': 'code units', 'rh_cross': 'code units',
 }
 
-
+# Sets the attributes of an h5py object (group or dataset) from a dictionary
 def set_attrs(obj, attrs):
     for k, v in attrs.items():
         if isinstance(v, (list, tuple)):
             v = np.array(v, dtype=h5py.string_dtype())
         obj.attrs[k] = v
 
-
+# Writes a dataset with the given name and data, and adds the units attribute if present
 def write_dset(g, name, data):
     ds = g.create_dataset(name, data=np.asarray(data, dtype=float))
     if name in UNITS:
         ds.attrs['units'] = UNITS[name]
 
-
+# Writes the data for a given radius (group g) and wave dictionary
 def write_radius(g, wave):
     set_attrs(g, wave['attrs'])
     write_dset(g, 'tret', wave['tret'])
@@ -36,9 +34,8 @@ def write_radius(g, wave):
         for name, data in dsets.items():
             write_dset(gm, name, data)
 
-
+# Writes everything in fname (first in fname.tmp, renamed at the end)
 def WriteGW(fname, root, sim, sampling, time, processing, units, radii):
-    """writes everything in fname (first in fname.tmp, renamed at the end)"""
     tmp = fname + '.tmp'
     cfg = h5py.get_config()
     old, cfg.track_order = cfg.track_order, True      # keep the groups in the order they are written
@@ -59,12 +56,12 @@ def WriteGW(fname, root, sim, sampling, time, processing, units, radii):
         cfg.track_order = old
     os.replace(tmp, fname)
 
-
+# Reads the simulation attributes from the HDF5 file
 def read_sim(fname):
     with h5py.File(fname, 'r') as f:
         return dict(f['simulation'].attrs)
 
-
+# Updates the simulation attributes in the HDF5 file
 def update_sim(fname, sim):
     with h5py.File(fname, 'r+') as f:
         set_attrs(f['simulation'], sim)
